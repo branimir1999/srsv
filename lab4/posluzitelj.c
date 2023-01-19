@@ -30,8 +30,8 @@ struct task {
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct task tasks[MAXMSG];
 unsigned int queue_counter = 0, timed_out = 0, queue_index = 0, queue_size = 0;
-void enqueue(struct task *task);
-void dequeue(struct task *task);
+void enqueue(struct task task);
+struct task dequeue(struct task task);
 
 void worker_thread(pthread_cond_t *wait_cond);
 void get_data(char *shm_name, int size, int *data);
@@ -97,7 +97,9 @@ int main(int argc, char **argv) {
             
             print("P: zaprimio %d %d %s\n", task.uid, task.time, task.name);
             time_sum += task.time;  // Sumiraj ukupno trajanje posla
-            enqueue(&task);         // Postavi posao u queue
+            pthread_mutex_lock(&queue_mutex);
+            enqueue(task);  // Postavi posao u queue
+            pthread_mutex_unlock(&queue_mutex);
         }
 
         // Probudi radne dretve
@@ -166,10 +168,11 @@ void worker_thread(pthread_cond_t *wait_cond) {
     U simulaciji obrade koristiti odgodu za simulaciju trošenja vremena (a ne radno čekanje). 
     */
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-    struct task active_task;
+    
     int has_task = 0, size = 0;
     int *data;
     while(1) {
+        struct task active_task;
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(wait_cond, &mutex);
         pthread_mutex_unlock(&mutex);
@@ -177,7 +180,7 @@ void worker_thread(pthread_cond_t *wait_cond) {
         if(queue_size > 0) {
             pthread_mutex_lock(&queue_mutex);
             if(queue_size > 0) {    // Dosao je na red; provjeri je li i dalje ima poslova
-                dequeue(&active_task);
+                active_task = dequeue(active_task);
                 has_task = 1;
             }
             pthread_mutex_unlock(&queue_mutex);
@@ -203,9 +206,7 @@ void worker_thread(pthread_cond_t *wait_cond) {
 
 void get_data(char *shm_name, int size, int *data){
     int shm_id;
-    print("%s\n", shm_name);
     shm_id = shm_open(shm_name, O_CREAT | O_RDWR, 00600);
-    print("%d\n", shm_id);
     if (shm_id == -1 || ftruncate(shm_id, size) == -1) {
         perror("shm_open/ftruncate");
         exit(1);
@@ -220,24 +221,26 @@ void get_data(char *shm_name, int size, int *data){
     close(shm_id);
 }
 
-void enqueue(struct task *task) {
+void enqueue(struct task task) {
     if (queue_counter == MAXMSG) {
         perror("cannot enqueue when queue is full");
         exit(1);
     }
-    tasks[queue_counter % MAXMSG] = *task;
+    tasks[queue_counter % MAXMSG] = task;
     queue_counter++;
     queue_size++;
 }
 
-void dequeue(struct task *task) {
+struct task dequeue(struct task task) {
     if (queue_counter == 0) {
         perror("cannot dequeue when queue is empty");
         exit(1);
     }
-    task = &tasks[queue_index % MAXMSG];
+    task = tasks[queue_index % MAXMSG];
     queue_index++;
     queue_size--;
+
+    return task;
 }
 
 void get_env_variable(char *path) {
