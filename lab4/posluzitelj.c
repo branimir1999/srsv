@@ -42,12 +42,12 @@ void print(const char *str, ...);
 
 int main(int argc, char **argv) {
     if(argc < 3) {  // Treba unijeti argumente N (broj dretvi) i M (granica za zbrojeno trajanje svih trenutnih poslova u cekanju)
-        printf("Not enough input variables\n");
+        print("Not enough input variables\n");
         exit(1);
     }
 
-    signal(SIGINT, end_simulation);
-    signal(SIGTERM, end_simulation);
+    signal(SIGINT, terminate);
+    //signal(SIGTERM, terminate);
  
     int success, thread_count = atoi(argv[1]), time_threshold = atoi(argv[2]);
     pthread_t threads[thread_count];                     // Dretve
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     for(int i = 0; i < thread_count; i++) {
         success = pthread_create(&threads[i], NULL, (void *)worker_thread, (void*)&wait_cond);
         if (success != 0) {
-            printf("Worker thread failed to create\n");
+            print("Worker thread failed to create\n");
             exit(1);
         }
     }
@@ -141,9 +141,6 @@ struct task receive_message(char  *path) {
         }
         
     }
-    printf("Primljeno: %s [prio=%d]\n", msg, priority);
-
-    
 
     sscanf(msg, "%d %d %s", &task.uid, &task.time, task.name);
     return task;
@@ -200,7 +197,7 @@ void worker_thread(pthread_cond_t *wait_cond) {
 }
 
 void get_data(char *shm_name, int size, int *data){
-    int shm_id, 
+    int shm_id;
     shm_id = shm_open(shm_name, O_CREAT | O_RDWR, 00600);
     if (shm_id == -1 || ftruncate(shm_id, size) == -1) {
         perror("shm_open/ftruncate");
@@ -240,14 +237,14 @@ void get_env_variable(char *path) {
     char data[BUFFER];
 
     if(!getenv(ENVVAR)){
-        fprintf(stderr, "The environment variable %s was not found.\n", ENVVAR);
+        print("The environment variable %s was not found.\n", ENVVAR);
         exit(1);
     }
 
     // Make sure the buffer is large enough to hold the environment variable
     // value. 
     if(snprintf(data, BUFFER, "%s", getenv(ENVVAR)) >= BUFFER){
-        fprintf(stderr, "BUFSIZE of %d was too small. Aborting\n", BUFFER);
+        print("BUFSIZE of %d was too small. Aborting\n", BUFFER);
         exit(1);
     }    
 
@@ -265,5 +262,7 @@ void print(const char *str, ...) {
 }
 
 void terminate() {
-
+    for(int i=queue_index; i<queue_counter; i++) {
+        shm_unlink(tasks[i%MAXMSG].name);
+    }
 }

@@ -30,6 +30,7 @@ struct uid_generator {
 #define MAXMSG 25
 
 
+void print(const char *str, ...);
 int generate_uids(char *path, int task_count);
 void get_env_variable(char *path);
 void generate_task_name(char *shm_name, char *path, int uid);
@@ -40,7 +41,7 @@ char * to_str(char *str, int num);
 
 int main(int argc, char **argv) {
     if(argc < 3) {
-        printf("Not enough input variables\n");
+        printf("Not enough input variables. Current variable count %d\n", argc - 1);
         exit(1);
     }
 
@@ -174,7 +175,7 @@ void generate_shared_memory(int uid, int time, char *shm_name) {
         strcat(tasks_str, " ");
     }
 
-    print("G: posao %d %d %s [%s]\n", uid, time, shm_name, tasks_str);
+    printf("G: posao %d %d %s [%s]\n", uid, time, shm_name, tasks_str);
 }
 
 void send_message(struct task task, char * path) {
@@ -188,13 +189,12 @@ void send_message(struct task task, char * path) {
     message_queue = mq_open(path, O_WRONLY | O_CREAT, 00600, &attr);
     if (message_queue == (mqd_t) -1) {
         perror("proizvodjac:mq_open");
-        return -1;
+        exit(1);
     }
     if (mq_send(message_queue, msg, size, priority)) {
         perror("mq_send");
-        return -1;
+        exit(1);
     }
-    printf("Poslano: %s [prio=%d]\n", msg, priority);
 }
 
 char * to_str(char *str, int num) {
