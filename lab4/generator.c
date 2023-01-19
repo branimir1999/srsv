@@ -27,7 +27,7 @@ struct uid_generator {
 #define UID_GENERATOR_SIZE sizeof(struct uid_generator)
 #define ENVVAR "SRSV_LAB4"
 #define BUFFER 100
-#define MAXMSG 25
+#define MAXMSG 10
 
 
 void print(const char *str, ...);
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 
         sleep(1);
     }
-    
+
     exit(0);
 }
 
@@ -184,6 +184,8 @@ void send_message(struct task task, char * path) {
     unsigned priority = 10;
     mqd_t message_queue;
    
+
+
     sprintf(msg, "%d %d %s", task.uid, task.time, task.name);
     size_t size = strlen(msg) + 1;
     message_queue = mq_open(path, O_WRONLY | O_CREAT, 00600, &attr);

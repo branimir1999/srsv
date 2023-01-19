@@ -19,7 +19,7 @@
 
 #define ENVVAR "SRSV_LAB4"
 #define BUFFER 100
-#define MAXMSG 25
+#define MAXMSG 10
 
 struct task {
     int uid;
@@ -124,6 +124,10 @@ struct task receive_message(char  *path) {
 
     message_queue = mq_open(path, O_RDONLY);
     if (message_queue == (mqd_t) -1) {
+        while (errno == ENOENT) {
+            sleep(1);
+            message_queue = mq_open(path, O_RDONLY);
+        } 
         perror("potrosac:mq_open");
         return task;
     }
