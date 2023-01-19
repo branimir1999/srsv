@@ -83,13 +83,12 @@ int main(int argc, char **argv) {
     */
     
     char path[BUFFER];  // Za environment varijablu
-    struct task task;   // Za primanje taskova i kontrolu timedouta
     int time_sum = 0;   // Varijabla za mjerenje je li se M prekoračio
 
     get_env_variable(path); 
     while(1) {  // Beskonacna petlja
         while(queue_size < thread_count && time_sum < time_threshold) {
-            task = receive_message(path);   // Dohvati posao (ili prazni posao)
+            struct task task = receive_message(path);   // Dohvati posao (ili prazni posao)
             if(timed_out) { // Proslo je 30 sekundi; timed out
                 print("P: pokrecem zaostale poslove (nakon isteka vise od 30 sekundi)\n");
                 timed_out = 0;
@@ -116,7 +115,7 @@ int main(int argc, char **argv) {
 
 struct task receive_message(char  *path) {
     mqd_t message_queue;
-    char msg[BUFFER];
+    char msg[BUFFER], read_buffer[BUFFER];
     size_t size;
     unsigned priority;
     struct task task = {.uid = -1, .time = -1, .name = "\0"};
@@ -133,9 +132,9 @@ struct task receive_message(char  *path) {
     }
 
     clock_gettime(CLOCK_REALTIME, &timeout);
-    timeout.tv_sec += 30;  // Set for 20 seconds
+    timeout.tv_sec += 30;  // Set for 30 seconds
     size = mq_timedreceive(message_queue, msg, BUFFER, &priority, &timeout);
-    if (size < 0) {
+    if (size == -1) {
         if (errno == ETIMEDOUT) {
             timed_out = 1;
             return task;
@@ -145,8 +144,10 @@ struct task receive_message(char  *path) {
         }
         
     }
+    
+    sscanf(msg, "%d %d %s", &task.uid, &task.time, read_buffer);
+    task.name = read_buffer;
 
-    sscanf(msg, "%d %d %s", &task.uid, &task.time, task.name);
     return task;
 }
 
@@ -202,7 +203,9 @@ void worker_thread(pthread_cond_t *wait_cond) {
 
 void get_data(char *shm_name, int size, int *data){
     int shm_id;
+    print("%s\n", shm_name);
     shm_id = shm_open(shm_name, O_CREAT | O_RDWR, 00600);
+    print("%d\n", shm_id);
     if (shm_id == -1 || ftruncate(shm_id, size) == -1) {
         perror("shm_open/ftruncate");
         exit(1);
