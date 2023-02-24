@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "string.h": "c",
+        "mman.h": "c",
+        "mqueue.h": "c",
+        "typeinfo": "c"
+    }
+}

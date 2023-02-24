@@ -8,7 +8,7 @@
 #include <stdarg.h>
 
 #define THREAD_COUNT 6      // Ukljucuje upravljac, stoga N=12
-#define LAB3RT 0            // Korištenje RMPA/SCHED_FIFO rasporedivanja
+#define LAB3RT 1            // Korištenje RMPA/SCHED_FIFO rasporedivanja
 
 // Pocetna konfiguracija dretve
 struct input_data_structure {
